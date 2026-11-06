@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Transformaciones 3D Interactivas con Three.js</title>
+<style>
+  body { margin: 0; background: #111; overflow: hidden; color: white; font-family: sans-serif; }
+  canvas { display: block; }
+  .ui {
+    position: absolute; top: 10px; left: 10px; display: flex; flex-direction: column; gap: 8px;
+    background: rgba(0,0,0,0.4); padding: 12px; border-radius: 10px;
+  }
+  button, input[type=range] {
+    cursor: pointer;
+    font-size: 14px;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 6px;
+  }
+  button { background: #0077ff; color: white; }
+  input[type=range] { width: 150px; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+
+<div class="ui">
+  <button id="btnRotacion">Rotación</button>
+  <div id="rotacionControls" class="hidden">
+    <input id="sliderRotacion" type="range" min="0" max="360" value="0">
+  </div>
+
+  <button id="btnTraslacion">Traslación</button>
+
+  <button id="btnSesgado">Sesgado</button>
+  <div id="sesgadoControls" class="hidden">
+    <label>X <input id="shearX" type="range" min="-1" max="1" step="0.01" value="0"></label>
+    <label>Y <input id="shearY" type="range" min="-1" max="1" step="0.01" value="0"></label>
+    <label>Z <input id="shearZ" type="range" min="-1" max="1" step="0.01" value="0"></label>
+  </div>
+
+  <button id="btnEscalamiento">Escalamiento</button>
+  <div id="escalamientoControls" class="hidden">
+    <input id="sliderEscala" type="range" min="0.5" max="2" step="0.01" value="1">
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+
+// === Interfaz base ===
+class Transformable {
+  trasladar(x, y, z) {}
+  rotar(rx, ry, rz) {}
+  escalar(sx, sy, sz) {}
+  sesgar(x, y, z) {}
+}
+
+// === Clase base Figura3D ===
+class Figura3D extends Transformable {
+  constructor(objeto3D) {
+    super();
+    this.objeto = objeto3D;
+  }
+  trasladar(x, y, z) { this.objeto.position.set(x, y, z); }
+  rotar(rx, ry, rz) { this.objeto.rotation.set(rx, ry, rz); }
+  escalar(sx, sy, sz) { this.objeto.scale.set(sx, sy, sz); }
+  sesgar(x, y, z) {
+    const m = new THREE.Matrix4();
+    m.set(
+      1, x, z, 0,
+      y, 1, z, 0,
+      x, y, 1, 0,
+      0, 0, 0, 1
+    );
+    this.objeto.geometry.applyMatrix4(m);
+  }
+}
+
+// === Subclase Cubo3D ===
+class Cubo3D extends Figura3D {
+  constructor(size, color) {
+    const geometry = new THREE.BoxGeometry(size, size, size);
+    const material = new THREE.MeshStandardMaterial({ color });
+    const mesh = new THREE.Mesh(geometry, material);
+    super(mesh);
+  }
+}
+
+// === Escena básica ===
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+scene.add(new THREE.AmbientLight(0x555555));
+const dirLight = new THREE.DirectionalLight(0xffffff, 2);
+dirLight.position.set(5, 5, 5);
+scene.add(dirLight);
+
+// Crear cubo
+const cubo = new Cubo3D(1, 0x00aaff);
+scene.add(cubo.objeto);
+cubo.trasladar(0, 0, 0);
+camera.position.z = 4;
+
+// === ROTACIÓN ===
+const btnRotacion = document.getElementById("btnRotacion");
+const rotacionControls = document.getElementById("rotacionControls");
+btnRotacion.onclick = () => rotacionControls.classList.toggle("hidden");
+
+const sliderRotacion = document.getElementById("sliderRotacion");
+sliderRotacion.oninput = () => {
+  const angle = THREE.MathUtils.degToRad(sliderRotacion.value);
+  cubo.rotar(0, angle, 0);
+};
+
+// === TRASLACIÓN (ARRASTRE CON RATÓN) ===
+let modoTraslacion = false;
+let mouseDown = false;
+
+const btnTraslacion = document.getElementById("btnTraslacion");
+btnTraslacion.onclick = () => {
+  modoTraslacion = !modoTraslacion;
+  btnTraslacion.style.background = modoTraslacion ? "#00cc66" : "#0077ff";
+};
+
+window.addEventListener("mousedown", e => { if (modoTraslacion && e.button === 0) mouseDown = true; });
+window.addEventListener("mouseup", () => mouseDown = false);
+window.addEventListener("mousemove", e => {
+  if (modoTraslacion && mouseDown) {
+    const xNorm = (e.clientX / window.innerWidth) * 2 - 1;
+    const yNorm = -(e.clientY / window.innerHeight) * 2 + 1;
+    cubo.trasladar(xNorm * 2, yNorm * 2, 0);
+  }
+});
+
+// === SESGADO ===
+const btnSesgado = document.getElementById("btnSesgado");
+const sesgadoControls = document.getElementById("sesgadoControls");
+btnSesgado.onclick = () => sesgadoControls.classList.toggle("hidden");
+
+const shearX = document.getElementById("shearX");
+const shearY = document.getElementById("shearY");
+const shearZ = document.getElementById("shearZ");
+
+[shearX, shearY, shearZ].forEach(slider => {
+  slider.oninput = () => {
+    cubo.objeto.geometry = new THREE.BoxGeometry(1, 1, 1); // resetear
+    cubo.sesgar(parseFloat(shearX.value), parseFloat(shearY.value), parseFloat(shearZ.value));
+  };
+});
+
+// === ESCALAMIENTO ===
+const btnEscalamiento = document.getElementById("btnEscalamiento");
+const escalamientoControls = document.getElementById("escalamientoControls");
+btnEscalamiento.onclick = () => escalamientoControls.classList.toggle("hidden");
+
+const sliderEscala = document.getElementById("sliderEscala");
+sliderEscala.oninput = () => {
+  const val = parseFloat(sliderEscala.value);
+  cubo.escalar(val, val, val);
+};
+
+// === Render Loop ===
+function animate() {
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
+}
+animate();
+
+// === Redimensionar ===
+window.addEventListener("resize", () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+
+</body>
+</html>
+
