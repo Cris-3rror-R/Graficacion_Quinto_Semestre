@@ -1,2 +1,2 @@
 # Graficacion_Quinto_Semestre
-Todos los programas realizados en la materia de Graficación en donde se utilizo java con sus librerias visuales para generar las practicas, las actividades de realizaron con un equipo durante toda la materia.
+Conjunto de programas y prácticas desarrollados en equipo para la materia de Graficación, enfocados en el procesamiento de gráficos por computadora. Se implementaron algoritmos para el manejo de distintos formatos de imagen, iluminación, tipografías, métodos vectoriales y renderizado de figuras 2D y 3D. Los proyectos se codificaron principalmente en Java utilizando sus librerías gráficas, apoyándonos en herramientas de inteligencia artificial para la depuración y optimización del código propio.
